@@ -21,7 +21,7 @@ func NewUserRepository(dbc *store.Client) *UserRepository {
 func (r *UserRepository) CreateWithFn(ctx context.Context, u user.User, postProcessFn func(id string) error) (string, error) {
 	var id string
 
-	r.dbc.WithTransaction(ctx, func(tx *sql.Tx) error {
+	if err := r.dbc.WithTransaction(ctx, func(tx *sql.Tx) error {
 		if err := tx.QueryRowContext(ctx, "INSERT INTO users (name,email) VALUES (?,?)", u.Name, u.Email).Scan(&id); err != nil {
 			return err
 		}
@@ -31,7 +31,9 @@ func (r *UserRepository) CreateWithFn(ctx context.Context, u user.User, postProc
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return "", err
+	}
 
 	return id, nil
 }
