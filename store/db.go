@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-
-	"github.com/jmoiron/sqlx"
 )
+
+type QueryerContext interface {
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+}
 
 type transactionContextKey struct{}
 
@@ -16,11 +18,12 @@ type Config struct {
 }
 
 type Client struct {
-	DB *sqlx.DB
+	DB      *sql.DB
+	querier QueryerContext
 }
 
 func New(cfg Config) (*Client, error) {
-	d, err := sqlx.Open("postgres", cfg.URL)
+	d, err := sql.Open("postgres", cfg.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +62,12 @@ func (c *Client) WithTransaction(ctx context.Context, fn func(tx *sql.Tx) error)
 }
 
 func (c *Client) SetContextWithTransaction(ctx context.Context) context.Context {
-	tx, _ := c.DB.BeginTxx(ctx, nil)
+	tx, _ := c.DB.BeginTx(ctx, nil)
 	return context.WithValue(ctx, transactionContextKey{}, tx)
 }
 
-func getContextFromTransaction(ctx context.Context) *sqlx.Tx {
-	if tx, ok := ctx.Value(transactionContextKey{}).(*sqlx.Tx); !ok {
+func getContextFromTransaction(ctx context.Context) *sql.Tx {
+	if tx, ok := ctx.Value(transactionContextKey{}).(*sql.Tx); !ok {
 		return nil
 	} else {
 		return tx
@@ -91,7 +94,7 @@ func (c *Client) Commit(ctx context.Context) error {
 	return errors.New("no transaction")
 }
 
-func (c *Client) GetDB(ctx context.Context) (db sqlx.QueryerContext) {
+func (c *Client) GetDBFromCtx(ctx context.Context) (db QueryerContext) {
 	db = c.DB
 	if tx := getContextFromTransaction(ctx); tx != nil {
 		db = tx

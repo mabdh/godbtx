@@ -24,24 +24,24 @@ func (s *UserService) Create(ctx context.Context, u user.User) (string, error) {
 
 	id, err := s.Create(ctxTx, u)
 	if err != nil {
-		if err := s.repo.Rollback(ctx, err); err != nil {
+		if err := s.repo.Rollback(ctxTx, err); err != nil {
 			return "", err
 		}
 		return "", err
 	}
 
-	if _, err := s.auditService.Create(ctx, audit.Audit{
+	if _, err := s.auditService.Create(ctxTx, audit.Audit{
 		Action:   "create",
 		Domain:   "user",
 		DomainID: id,
 	}); err != nil {
-		if err := s.repo.Rollback(ctx, err); err != nil {
+		if err := s.repo.Rollback(ctxTx, err); err != nil {
 			return "", err
 		}
 		return "", err
 	}
 
-	if err := s.repo.Commit(ctx); err != nil {
+	if err := s.repo.Commit(ctxTx); err != nil {
 		return "", err
 	}
 	return id, nil

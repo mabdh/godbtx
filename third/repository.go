@@ -26,9 +26,9 @@ func NewUserRepository(dbc *store.Client) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, u user.User) (string, error) {
 
-	db := r.dbc.GetDB(ctx)
+	db := r.dbc.GetDBFromCtx(ctx)
 	var id string
-	err := db.QueryRowxContext(ctx, "INSERT INTO users (name,email) VALUES (?,?)", u.Name, u.Email).Scan(&id)
+	err := db.QueryRowContext(ctx, "INSERT INTO users (name,email) VALUES (?,?)", u.Name, u.Email).Scan(&id)
 	if err != nil {
 		return "", err
 	}
